@@ -1,0 +1,22 @@
+# Code ownership — reviews are requested per area.
+# Teams: create @agni-cc-cd/platform, @agni-cc-cd/web, @agni-cc-cd/data in the org
+# and these rules start routing reviews automatically.
+
+*                        @agni-cc-cd/platform
+
+# Edge redirect hot path + cache — platform team owns latency-critical code.
+/app/[slug]/             @agni-cc-cd/platform
+/lib/redirect.ts         @agni-cc-cd/platform
+/lib/analytics.ts        @agni-cc-cd/platform
+
+# Data layer — data team owns schema and queries.
+/db/                     @agni-cc-cd/data
+/lib/db.ts               @agni-cc-cd/data
+
+# Product surface — web team owns UI and product APIs.
+/app/                    @agni-cc-cd/web
+/lib/slug.ts             @agni-cc-cd/web
+
+# Infra & release engineering.
+/cloudflare.config.ts    @agni-cc-cd/platform
+/.github/                @agni-cc-cd/platform

@@ -1,0 +1,371 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/* ---------------------------------------------------------------------------
+   Monochrome design system (light + dark). 95% of the UI is black/white/gray;
+   color appears only where it carries meaning (status, brand marks).
+--------------------------------------------------------------------------- */
+:root {
+  --surface: #ffffff;
+  --surface-2: #fafafa;
+  --surface-3: #f4f4f5;
+  --ink: #18181b;
+  --ink-2: #52525b;
+  --ink-3: #a1a1aa;
+  --line: #e4e4e7;
+  --line-2: #d4d4d8;
+  --inv: #18181b;
+  --inv-ink: #ffffff;
+  --ok: #16a34a;
+  --danger: #dc2626;
+  --chart: #3f3f46;
+  --chart-2: #a1a1aa;
+  color-scheme: light;
+}
+
+[data-theme="dark"] {
+  --surface: #09090b;
+  --surface-2: #111113;
+  --surface-3: #1b1b1e;
+  --ink: #fafafa;
+  --ink-2: #a1a1aa;
+  --ink-3: #6b6b74;
+  --line: #26262a;
+  --line-2: #35353b;
+  --inv: #fafafa;
+  --inv-ink: #09090b;
+  --ok: #4ade80;
+  --danger: #f87171;
+  --chart: #d4d4d8;
+  --chart-2: #52525b;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface-2);
+  --color-surface3: var(--surface-3);
+  --color-ink: var(--ink);
+  --color-ink2: var(--ink-2);
+  --color-ink3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line2: var(--line-2);
+  --color-inv: var(--inv);
+  --color-invink: var(--inv-ink);
+  --color-ok: var(--ok);
+  --color-danger: var(--danger);
+  --color-chart: var(--chart);
+  --color-chart2: var(--chart-2);
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background: var(--surface);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+
+  ::selection {
+    background: var(--ink);
+    color: var(--surface);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+@layer components {
+  .container-x {
+    margin-inline: auto;
+    width: 100%;
+    max-width: 64rem;
+    padding-inline: 1.25rem;
+  }
+
+  /* Buttons — compact, high-contrast, minimal. */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+    height: 2.125rem;
+    padding-inline: 0.95rem;
+    border-radius: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 0.12s ease,
+      border-color 0.12s ease,
+      color 0.12s ease,
+      opacity 0.12s ease;
+  }
+
+  .btn-primary {
+    background: var(--inv);
+    color: var(--inv-ink);
+  }
+
+  .btn-primary:hover {
+    opacity: 0.88;
+  }
+
+  .btn-ghost {
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--ink);
+  }
+
+  .btn-ghost:hover {
+    background: var(--surface-3);
+    border-color: var(--line-2);
+  }
+
+  .btn-danger {
+    color: var(--danger);
+    border: 1px solid var(--line);
+    background: transparent;
+  }
+
+  .btn-danger:hover {
+    border-color: var(--danger);
+    background: color-mix(in srgb, var(--danger) 8%, transparent);
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-lg {
+    height: 2.5rem;
+    padding-inline: 1.25rem;
+    font-size: 0.875rem;
+    border-radius: 0.55rem;
+  }
+
+  .btn-icon {
+    width: 2.125rem;
+    padding-inline: 0;
+  }
+
+  /* Inputs */
+  .input {
+    width: 100%;
+    height: 2.125rem;
+    padding-inline: 0.7rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--ink);
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+  }
+
+  .input::placeholder {
+    color: var(--ink-3);
+  }
+
+  .input:focus {
+    border-color: var(--ink-3);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--ink) 10%, transparent);
+  }
+
+  .input-lg {
+    height: 2.75rem;
+    font-size: 0.9375rem;
+    padding-inline: 0.95rem;
+    border-radius: 0.6rem;
+  }
+
+  /* Surfaces */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+  }
+
+  .card-2 {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 0.75rem;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    height: 1.375rem;
+    padding-inline: 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--surface-2);
+    color: var(--ink-2);
+    font-size: 0.6875rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .divider {
+    height: 1px;
+    background: var(--line);
+    border: 0;
+  }
+
+  .muted {
+    color: var(--ink-2);
+  }
+
+  .faint {
+    color: var(--ink-3);
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* Blog prose */
+  .prose {
+    font-size: 0.9375rem;
+    line-height: 1.75;
+    color: var(--ink);
+    max-width: 42rem;
+  }
+
+  .prose h1 {
+    font-size: 1.75rem;
+    font-weight: 650;
+    letter-spacing: -0.02em;
+    margin: 1.6rem 0 0.75rem;
+  }
+
+  .prose h2 {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.015em;
+    margin: 1.75rem 0 0.6rem;
+  }
+
+  .prose h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 1.4rem 0 0.5rem;
+  }
+
+  .prose p {
+    margin: 0.85rem 0;
+    color: var(--ink-2);
+  }
+
+  .prose strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .prose a {
+    color: var(--ink);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .prose ul,
+  .prose ol {
+    margin: 0.85rem 0;
+    padding-left: 1.35rem;
+    color: var(--ink-2);
+  }
+
+  .prose li {
+    margin: 0.3rem 0;
+    list-style: disc;
+  }
+
+  .prose ol li {
+    list-style: decimal;
+  }
+
+  .prose code {
+    font-size: 0.8125rem;
+    background: var(--surface-3);
+    border: 1px solid var(--line);
+    border-radius: 0.35rem;
+    padding: 0.1rem 0.35rem;
+    color: var(--ink);
+  }
+
+  .prose pre {
+    background: var(--surface-2);
+    border: 1px solid var(--line);
+    border-radius: 0.6rem;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    margin: 1rem 0;
+  }
+
+  .prose pre code {
+    background: none;
+    border: 0;
+    padding: 0;
+  }
+
+  .prose blockquote {
+    border-left: 2px solid var(--line-2);
+    padding-left: 1rem;
+    margin: 1rem 0;
+    color: var(--ink-2);
+  }
+}
+
+@layer utilities {
+  .fade-in {
+    animation: fade-in 0.25s ease both;
+  }
+
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(2px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      var(--surface-3) 25%,
+      var(--surface-2) 50%,
+      var(--surface-3) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 0.4rem;
+  }
+
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
