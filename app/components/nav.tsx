@@ -4,9 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { authErrorMessage, signOut } from "@/lib/firebase-client";
+import { loginHref } from "@/lib/drafts";
+import { isMessagingConfigured, registerMessaging } from "@/lib/fcm";
 import { useAuth } from "./authed";
-import { ArrowUpRightIcon, CloseIcon, LogoutIcon, MenuIcon, UserIcon } from "./icons";
+import { ArrowUpRightIcon, BellIcon, CloseIcon, LogoutIcon, MenuIcon, UserIcon } from "./icons";
 import { ThemeToggle } from "./theme-toggle";
+import { useToast } from "./toast";
 
 export function Logo({ size = 18 }: { size?: number }) {
   return (
@@ -31,11 +34,19 @@ const NAV_LINKS = [
 
 export function SiteNav() {
   const { user, loading, setUser } = useAuth();
+  const { push } = useToast();
   const [menuOpen, setMenuOpen] = useState(false);
   const [userMenu, setUserMenu] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const pathname = usePathname();
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // Server renders the plain path; the return-to target needs window, so it
+  // fills in after mount (and refreshes on navigation).
+  const [loginUrl, setLoginUrl] = useState("/login");
+  useEffect(() => {
+    setLoginUrl(loginHref());
+  }, [pathname]);
 
   useEffect(() => {
     setMobileOpen(false);
@@ -124,6 +135,35 @@ export function SiteNav() {
                   >
                     <UserIcon width={14} height={14} /> Dashboard
                   </Link>
+                  {isMessagingConfigured() && (
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[12.5px] text-ink2 hover:bg-surface3 hover:text-ink"
+                      onClick={async () => {
+                        setUserMenu(false);
+                        const token = await registerMessaging();
+                        if (token) {
+                          push({ kind: "success", message: "Notifications are on for this device." });
+                        } else if (
+                          typeof Notification !== "undefined" &&
+                          Notification.permission === "denied"
+                        ) {
+                          push({
+                            kind: "error",
+                            message:
+                              "Notifications are blocked in your browser. Allow them for this site in your browser settings, then try again.",
+                          });
+                        } else {
+                          push({
+                            kind: "info",
+                            message: "We couldn't turn on notifications for this device. Try again.",
+                          });
+                        }
+                      }}
+                    >
+                      <BellIcon width={14} height={14} /> Turn on notifications
+                    </button>
+                  )}
                   <button
                     type="button"
                     className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-[12.5px] text-ink2 hover:bg-surface3 hover:text-ink"
@@ -132,8 +172,9 @@ export function SiteNav() {
                       try {
                         await signOut();
                         setUser(null);
+                        push({ kind: "success", message: "You're signed out." });
                       } catch (err) {
-                        console.error(authErrorMessage(err));
+                        push({ kind: "error", message: authErrorMessage(err) });
                       }
                     }}
                   >
@@ -144,7 +185,7 @@ export function SiteNav() {
             </div>
           ) : (
             <>
-              <Link href="/login" className="btn btn-ghost hidden sm:inline-flex">
+              <Link href={loginUrl} className="btn btn-ghost hidden sm:inline-flex">
                 Sign in
               </Link>
               <Link href="/#shorten" className="btn btn-primary">
@@ -181,6 +222,14 @@ export function SiteNav() {
             >
               Dashboard
             </Link>
+            {(loading || isGuest) && (
+              <Link
+                href={loginUrl}
+                className="rounded-md px-3 py-2 text-[13px] text-ink2 hover:bg-surface3 hover:text-ink"
+              >
+                Sign in
+              </Link>
+            )}
             <a
               href="https://github.com/agni-cc-cd/handbook"
               target="_blank"

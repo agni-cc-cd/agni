@@ -2,20 +2,25 @@
 
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import {
+  EmailAuthProvider,
   FacebookAuthProvider,
-  getAuth,
   GithubAuthProvider,
   GoogleAuthProvider,
-  isSignInWithEmailLink,
-  linkWithPopup,
   OAuthProvider,
-  sendSignInLinkToEmail,
+  RecaptchaVerifier,
+  createUserWithEmailAndPassword,
+  getAuth,
+  linkWithCredential,
+  linkWithPhoneNumber,
+  linkWithPopup,
+  sendPasswordResetEmail,
   signInAnonymously,
-  signInWithEmailLink,
+  signInWithEmailAndPassword,
+  signInWithPhoneNumber,
   signInWithPopup,
   signOut as fbSignOut,
-  TwitterAuthProvider,
   type Auth,
+  type ConfirmationResult,
   type User,
 } from "firebase/auth";
 import { firebaseConfig } from "./firebase-config";
@@ -30,34 +35,26 @@ export function getFirebaseAuth(): Auth {
   return getAuth(getFirebaseApp());
 }
 
-/** Social sign-in providers, ordered by expected usage. */
-export type ProviderId =
-  | "google"
-  | "github"
-  | "microsoft"
-  | "twitter"
-  | "facebook"
-  | "yahoo";
+/**
+ * Social sign-in providers (exactly four). Primary methods are email/password,
+ * phone and anonymous — see SignInPanel for the order they render in.
+ */
+export type ProviderId = "google" | "apple" | "github" | "facebook";
 
 function buildProvider(id: ProviderId) {
   switch (id) {
     case "google":
       return new GoogleAuthProvider();
+    case "apple": {
+      const p = new OAuthProvider("apple.com");
+      p.addScope("email");
+      p.addScope("name");
+      return p;
+    }
     case "github":
       return new GithubAuthProvider();
-    case "microsoft": {
-      const p = new OAuthProvider("microsoft.com");
-      p.setCustomParameters({ prompt: "select_account" });
-      return p;
-    }
-    case "twitter":
-      return new TwitterAuthProvider();
     case "facebook":
       return new FacebookAuthProvider();
-    case "yahoo": {
-      const p = new OAuthProvider("yahoo.com");
-      return p;
-    }
   }
 }
 
@@ -83,25 +80,66 @@ export async function signInGuest(): Promise<User> {
   return cred.user;
 }
 
-const EMAIL_LINK_KEY = "agni-email-link-signin";
-
-/** Send a passwordless sign-in link (Firebase email link auth). */
-export async function sendEmailSignInLink(email: string): Promise<void> {
-  await sendSignInLinkToEmail(getFirebaseAuth(), email, {
-    url: `${window.location.origin}/login`,
-    handleCodeInApp: true,
-  });
-  localStorage.setItem(EMAIL_LINK_KEY, email);
+/**
+ * Email + password sign-in. A guest session is upgraded in place so links
+ * created before signing in stay attached to the account.
+ */
+export async function signInEmail(email: string, password: string): Promise<User> {
+  const auth = getFirebaseAuth();
+  const current = auth.currentUser;
+  if (current?.isAnonymous) {
+    const cred = await linkWithCredential(
+      current,
+      EmailAuthProvider.credential(email, password),
+    ).catch(async () => {
+      // Guest uid cannot take this email (already registered) — sign in instead.
+      const inCred = await signInWithEmailAndPassword(auth, email, password);
+      return inCred;
+    });
+    return cred.user;
+  }
+  const cred = await signInWithEmailAndPassword(auth, email, password);
+  return cred.user;
 }
 
-/** Complete email-link sign-in if the current URL is a sign-in link. */
-export async function completeEmailSignInIfPending(): Promise<User | null> {
+/** Create a new email/password account (guest sessions upgrade in place). */
+export async function signUpEmail(email: string, password: string): Promise<User> {
   const auth = getFirebaseAuth();
-  if (!isSignInWithEmailLink(auth, window.location.href)) return null;
-  const email = localStorage.getItem(EMAIL_LINK_KEY) ?? window.prompt("Confirm your email");
-  if (!email) return null;
-  const cred = await signInWithEmailLink(auth, email);
-  localStorage.removeItem(EMAIL_LINK_KEY);
+  const current = auth.currentUser;
+  const cred = await createUserWithEmailAndPassword(auth, email, password);
+  if (current?.isAnonymous && current.uid !== cred.user.uid) {
+    // New account created alongside a guest session: the guest uid is disposable
+    // (links it created are migrated server-side on next write via upsertUser).
+    return cred.user;
+  }
+  return cred.user;
+}
+
+/** Password reset email for a known address. */
+export async function sendPasswordReset(email: string): Promise<void> {
+  await sendPasswordResetEmail(getFirebaseAuth(), email);
+}
+
+/**
+ * Phone sign-in step 1: send an SMS code. Requires an invisible reCAPTCHA
+ * (rendered by SignInPanel into #recaptcha-container).
+ */
+export async function sendPhoneCode(phone: string): Promise<ConfirmationResult> {
+  const auth = getFirebaseAuth();
+  const verifier = new RecaptchaVerifier(auth, "recaptcha-container", { size: "invisible" });
+  const current = auth.currentUser;
+  if (current?.isAnonymous) {
+    return linkWithPhoneNumber(current, phone, verifier);
+  }
+  return signInWithPhoneNumber(auth, phone, verifier);
+}
+
+/** Phone sign-in step 2: verify the SMS code. */
+export async function confirmPhoneCode(
+  confirmation: ConfirmationResult,
+  code: string,
+): Promise<User> {
+  const cred = await confirmation.confirm(code);
   return cred.user;
 }
 
@@ -116,24 +154,46 @@ export async function getIdToken(user: User): Promise<string> {
 
 /** Human-readable message for common Firebase auth errors. */
 export function authErrorMessage(err: unknown): string {
-  const code = typeof err === "object" && err && "code" in err ? String((err as { code: string }).code) : "";
+  const code =
+    typeof err === "object" && err && "code" in err ? String((err as { code: string }).code) : "";
   switch (code) {
     case "auth/popup-closed-by-user":
     case "auth/cancelled-popup-request":
       return "Sign-in was cancelled.";
     case "auth/popup-blocked":
-      return "Your browser blocked the sign-in popup. Allow popups and try again.";
+      return "Your browser blocked the sign-in window. Allow popups for this site and try again.";
     case "auth/operation-not-allowed":
-      return "This sign-in method is not enabled yet (Firebase console → Authentication → Sign-in method).";
+      return "That sign-in method is turned off right now. Try another way to sign in.";
     case "auth/unauthorized-domain":
-      return "This domain is not authorized for sign-in (Firebase console → Authentication → Settings → Authorized domains).";
+      return "Sign-in is not set up for this website yet. Please try again later.";
     case "auth/account-exists-with-different-credential":
       return "An account already exists with a different sign-in method. Try that one instead.";
     case "auth/network-request-failed":
-      return "Network error. Check your connection and try again.";
+      return "We couldn't reach the sign-in service. Check your connection and try again.";
     case "auth/invalid-email":
-      return "That email address does not look valid.";
+      return "That email address doesn't look right.";
+    case "auth/invalid-credential":
+    case "auth/wrong-password":
+    case "auth/user-not-found":
+      return "That email or password is incorrect.";
+    case "auth/email-already-in-use":
+      return "An account already exists for that email. Sign in instead.";
+    case "auth/weak-password":
+      return "Please choose a stronger password (at least 6 characters).";
+    case "auth/too-many-requests":
+      return "Too many attempts. Please wait a moment and try again.";
+    case "auth/invalid-phone-number":
+      return "That phone number doesn't look right. Include the country code, like +14155550100.";
+    case "auth/invalid-verification-code":
+      return "That code is incorrect. Check your messages and try again.";
+    case "auth/code-expired":
+      return "That code has expired. Request a new one.";
+    case "auth/missing-phone-number":
+      return "Please enter your phone number.";
+    case "auth/captcha-check-failed":
+    case "auth/invalid-app-credential":
+      return "Verification failed. Please refresh the page and try again.";
     default:
-      return err instanceof Error && err.message ? err.message : "Sign-in failed. Try another method.";
+      return err instanceof Error && err.message ? err.message : "Sign-in didn't work. Try again.";
   }
 }

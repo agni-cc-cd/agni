@@ -4,8 +4,8 @@ import { createRemoteJWKSet, jwtVerify, type JWTPayload } from "jose";
  * Multi-tenant auth for a public product. Two accepted principals:
  *
  * 1. `Authorization: Bearer <firebase-id-token>` — any signed-in user
- *    (Google, GitHub, Microsoft, X, Facebook, Yahoo, email link, or guest),
- *    verified against Google JWKS. The uid owns the user's links.
+ *    (email/password, phone, Google, Apple, GitHub, Facebook, or anonymous
+ *    guest), verified against Google JWKS. The uid owns the user's links.
  * 2. `Authorization: Bearer <ADMIN_TOKEN>` — instance secret for ops/CI,
  *    mapped to the "open" (admin) principal. If no secret is configured the
  *    instance runs in "open mode" (local demos only).
@@ -83,11 +83,20 @@ export function isAdminAuthorized(request: Request, adminToken: string | undefin
 
 export function unauthorized(): Response {
   return Response.json(
-    { error: "Unauthorized. Sign in first, or send Authorization: Bearer <ADMIN_TOKEN>." },
+    {
+      error: "Please sign in to continue.",
+      code: "auth_required",
+    },
     { status: 401 },
   );
 }
 
 export function forbidden(): Response {
-  return Response.json({ error: "You do not own this resource." }, { status: 403 });
+  return Response.json(
+    {
+      error: "You can only manage links you created.",
+      code: "forbidden",
+    },
+    { status: 403 },
+  );
 }

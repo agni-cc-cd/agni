@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect } from "react";
+import { safeNext } from "@/lib/drafts";
 import { useAuth } from "../components/authed";
 import { ArrowUpRightIcon, CheckIcon } from "../components/icons";
 import { SignInPanel } from "../components/sign-in";
@@ -11,7 +12,7 @@ function LoginInner() {
   const { user, loading, setUser } = useAuth();
   const router = useRouter();
   const params = useSearchParams();
-  const next = params?.get("next") || "/dashboard";
+  const next = safeNext(params?.get("next"), "/dashboard");
 
   useEffect(() => {
     if (!loading && user && !user.isAnonymous) {

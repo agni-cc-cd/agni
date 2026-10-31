@@ -15,7 +15,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { DB, ADMIN_TOKEN } = getEnv();
   if (!isAdminAuthorized(request, ADMIN_TOKEN)) {
-    return Response.json({ error: "Admin only." }, { status: 403 });
+    return Response.json({ error: "You need to be signed in as an admin to do this." }, { status: 403 });
   }
   await ensureSchema(DB);
 
@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   } | null;
 
   if (!body?.slug || !body.title || !body.body_md) {
-    return Response.json({ error: "`slug`, `title` and `body_md` are required." }, { status: 400 });
+    return Response.json({ error: "A post needs a slug, a title and content." }, { status: 400 });
   }
 
   const post = await upsertPost(DB, {

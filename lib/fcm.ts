@@ -10,6 +10,12 @@
  */
 import { getMessaging, getToken, onMessage, isSupported } from "firebase/messaging";
 import { getFirebaseApp } from "./firebase-client";
+import { VAPID_KEY } from "./firebase-config";
+
+/** True once a Web Push certificate has been pasted into firebase-config.ts. */
+export function isMessagingConfigured(): boolean {
+  return VAPID_KEY.length > 0;
+}
 
 export async function registerMessaging(): Promise<string | null> {
   if (!(await isSupported())) return null;
@@ -18,7 +24,10 @@ export async function registerMessaging(): Promise<string | null> {
     if (permission !== "granted") return null;
   }
   const messaging = getMessaging(getFirebaseApp());
-  return getToken(messaging).catch(() => null);
+  // Without the Web Push certificate registration cannot succeed — skip
+  // instead of asking for a token that will fail.
+  if (!isMessagingConfigured()) return null;
+  return getToken(messaging, { vapidKey: VAPID_KEY }).catch(() => null);
 }
 
 export function onForegroundMessage(handler: (payload: unknown) => void): () => void {

@@ -12,7 +12,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
 
   const { id } = await params;
   const link = await getLinkById(DB, id);
-  if (!link) return Response.json({ error: "Link not found." }, { status: 404 });
+  if (!link) return Response.json({ error: "This link doesn't exist." }, { status: 404 });
   if (!ownsLink(auth, link)) return forbidden();
   return Response.json({ link });
 }
@@ -24,7 +24,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
   const { id } = await params;
   const link = await getLinkById(DB, id);
-  if (!link) return Response.json({ error: "Link not found." }, { status: 404 });
+  if (!link) return Response.json({ error: "This link doesn't exist." }, { status: 404 });
   if (!ownsLink(auth, link)) return forbidden();
 
   await deleteLink(DB, id);

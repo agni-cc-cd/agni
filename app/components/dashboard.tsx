@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { Link as LinkModel, Overview } from "@/lib/types";
 import { authHeaders, useAuth } from "./authed";
@@ -15,6 +16,7 @@ import {
   TrashIcon,
 } from "./icons";
 import { LinkForm } from "./link-form";
+import { useToast } from "./toast";
 
 export function timeAgo(iso: string | null): string {
   if (!iso) return "never";
@@ -31,6 +33,10 @@ export function timeAgo(iso: string | null): string {
 
 export function Dashboard() {
   const { bearer } = useAuth();
+  const { push } = useToast();
+  const router = useRouter();
+  const params = useSearchParams();
+  const days = Number(params?.get("days") ?? 30) || 30;
   const [links, setLinks] = useState<LinkModel[]>([]);
   const [overview, setOverview] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -41,17 +47,17 @@ export function Dashboard() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/links?days=30", { headers: authHeaders(bearer) });
+      const res = await fetch(`/api/links?days=${days}`, { headers: authHeaders(bearer) });
       const data = (await res.json()) as { links: LinkModel[]; overview: Overview; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Failed to load links.");
+      if (!res.ok) throw new Error(data.error ?? "We couldn't load your links. Refresh to try again.");
       setLinks(data.links);
       setOverview(data.overview);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load links.");
+      setError(err instanceof Error ? err.message : "We couldn't load your links. Refresh to try again.");
     } finally {
       setLoading(false);
     }
-  }, [bearer]);
+  }, [bearer, days]);
 
   useEffect(() => {
     if (bearer) load();
@@ -65,9 +71,10 @@ export function Dashboard() {
     });
     if (!res.ok) {
       const data = (await res.json()) as { error?: string };
-      alert(data.error ?? "Delete failed.");
+      push({ kind: "error", message: data.error ?? "We couldn't delete that link. Try again." });
       return;
     }
+    push({ kind: "success", message: "Link deleted." });
     load();
   }
 
@@ -81,28 +88,34 @@ export function Dashboard() {
     }
   }
 
-  const clicks30 = overview?.series.reduce((a, b) => a + b.count, 0) ?? 0;
+  const clicksWindow = overview?.series.reduce((a, b) => a + b.count, 0) ?? 0;
+
+  function setDays(next: number) {
+    const qs = new URLSearchParams(params?.toString());
+    qs.set("days", String(next));
+    router.replace(`?${qs.toString()}`, { scroll: false });
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid grid-cols-2 gap-2.5 @md:grid-cols-4">
         <StatTile label="Total clicks" value={(overview?.totals.clicks ?? 0).toLocaleString()} hint="all time" />
         <StatTile
-          label="Clicks (30 days)"
-          value={clicks30.toLocaleString()}
+          label={`Clicks (${days} days)`}
+          value={clicksWindow.toLocaleString()}
           trend={overview?.series ?? []}
         />
         <StatTile
           label="Unique visitors"
           value={(overview?.totals.uniqueVisitors ?? 0).toLocaleString()}
-          hint="distinct IPs, 30d"
+          hint={`distinct IPs, ${days}d`}
         />
         <StatTile label="Links" value={(overview?.totals.links ?? 0).toLocaleString()} hint="in your account" />
       </div>
 
       <div className="@container">
         <div className="grid gap-4 @lg:grid-cols-2">
-          {overview && <TimeChart data={overview.series} days={30} />}
+          {overview && <TimeChart data={overview.series} days={days} />}
           <div className="card flex flex-col justify-center gap-3 p-6">
             <h3 className="text-[12.5px] font-medium">Create a new short link</h3>
             <LinkForm
@@ -116,12 +129,28 @@ export function Dashboard() {
       </div>
 
       <div>
-        <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
           <h2 className="text-[13px] font-medium">Your links</h2>
-          <button type="button" className="btn btn-ghost h-8" onClick={load} disabled={loading}>
-            <RefreshIcon width={13} height={13} />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-line bg-surface2 p-0.5" role="group" aria-label="Date range">
+              {[7, 30, 90].map((d) => (
+                <button
+                  key={d}
+                  type="button"
+                  className={`rounded-md px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                    days === d ? "bg-surface text-ink shadow-sm" : "text-ink3 hover:text-ink2"
+                  }`}
+                  onClick={() => setDays(d)}
+                >
+                  {d}d
+                </button>
+              ))}
+            </div>
+            <button type="button" className="btn btn-ghost h-8" onClick={load} disabled={loading}>
+              <RefreshIcon width={13} height={13} />
+              Refresh
+            </button>
+          </div>
         </div>
 
         {error && (

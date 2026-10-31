@@ -11,3 +11,11 @@ export const firebaseConfig = {
   messagingSenderId: "964435280173",
   measurementId: "G-PW2B5FM3SG",
 } as const;
+
+/**
+ * Web Push certificate (VAPID public key). Generate one in the Firebase
+ * console: Project settings → Cloud Messaging → Web Push certificates →
+ * Generate key pair, then paste the key string here. Web push registration
+ * is skipped until it is set.
+ */
+export const VAPID_KEY = "";

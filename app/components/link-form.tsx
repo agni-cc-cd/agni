@@ -1,10 +1,21 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import type { Link as LinkModel } from "@/lib/types";
+import { clearDraft, loadDraft, loginHref, saveDraft } from "@/lib/drafts";
 import { authHeaders, useAuth } from "./authed";
 import { ArrowUpRightIcon, ChartIcon, CheckIcon, CopyIcon, LinkIcon, SparkIcon } from "./icons";
+import { useToast } from "./toast";
+
+const DRAFT_KEY = "link-form";
+
+interface LinkDraft {
+  url: string;
+  slug: string;
+  showSlug: boolean;
+}
 
 export function LinkForm({
   size = "lg",
@@ -14,13 +25,29 @@ export function LinkForm({
   onCreated?: (link: LinkModel) => void;
 }) {
   const { bearer, user } = useAuth();
+  const { push } = useToast();
+  const router = useRouter();
   const [url, setUrl] = useState("");
   const [slug, setSlug] = useState("");
   const [showSlug, setShowSlug] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<LinkModel | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // Restore anything the user typed before a sign-in round trip.
+  useEffect(() => {
+    const draft = loadDraft<LinkDraft>(DRAFT_KEY);
+    if (draft) {
+      setUrl(draft.url ?? "");
+      setSlug(draft.slug ?? "");
+      setShowSlug(Boolean(draft.showSlug));
+      clearDraft(DRAFT_KEY);
+    }
+  }, []);
+
+  function persistDraft() {
+    saveDraft(DRAFT_KEY, { url, slug, showSlug } satisfies LinkDraft);
+  }
 
   const origin = typeof window !== "undefined" ? window.location.origin : "https://agni.cc.cd";
   const shortUrl = created ? `${origin}/${created.slug}` : null;
@@ -28,7 +55,6 @@ export function LinkForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    setError(null);
     setCreated(null);
     try {
       const res = await fetch("/api/links", {
@@ -36,14 +62,27 @@ export function LinkForm({
         headers: { "content-type": "application/json", ...authHeaders(bearer) },
         body: JSON.stringify({ url, slug: slug || undefined }),
       });
-      const data = (await res.json()) as { link?: LinkModel; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Something went wrong.");
+      const data = (await res.json()) as { link?: LinkModel; error?: string; code?: string };
+      if (!res.ok) {
+        if (res.status === 401 || data.code === "auth_required") {
+          // Keep everything typed, sign in, come back to this exact spot.
+          persistDraft();
+          router.push(loginHref());
+          return;
+        }
+        throw new Error(data.error ?? "We couldn't create that short link. Try again.");
+      }
       setCreated(data.link!);
       setUrl("");
       setSlug("");
       onCreated?.(data.link!);
+      push({ kind: "success", message: "Short link created." });
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong.");
+      push({
+        kind: "error",
+        duration: 8000,
+        message: err instanceof Error ? err.message : "We couldn't create that short link. Try again.",
+      });
     } finally {
       setLoading(false);
     }
@@ -55,7 +94,7 @@ export function LinkForm({
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // clipboard unavailable
+      push({ kind: "error", message: "We couldn't copy to your clipboard. Copy the link manually." });
     }
   }
 
@@ -108,23 +147,12 @@ export function LinkForm({
             {showSlug ? "Hide custom slug" : "Custom slug"}
           </button>
           {!user && (
-            <Link href="/login" className="text-[11.5px] text-ink3 underline-offset-2 hover:text-ink2 hover:underline">
+            <Link href={loginHref()} className="text-[11.5px] text-ink3 underline-offset-2 hover:text-ink2 hover:underline">
               Sign in to keep your links and analytics
             </Link>
           )}
         </div>
       </form>
-
-      {error && (
-        <div className="card flex items-center gap-2 border-danger/40 px-4 py-2.5 text-[12px] text-danger">
-          {error}
-          {/sign in|unauthorized/i.test(error) && (
-            <Link href="/login" className="btn btn-ghost ml-auto h-7 text-[11px]">
-              Sign in
-            </Link>
-          )}
-        </div>
-      )}
 
       {shortUrl && created && (
         <div className="card flex flex-wrap items-center gap-3 px-4 py-3 fade-in">

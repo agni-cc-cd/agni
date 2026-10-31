@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AuthProvider } from "./components/authed";
 import { Logo, SiteNav } from "./components/nav";
 import { ThemeToggle } from "./components/theme-toggle";
+import { ToastProvider } from "./components/toast";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -63,10 +64,11 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       </head>
       <body>
         <AuthProvider>
-          <SiteNav />
-          <main className="min-h-[70vh]">{children}</main>
-          <footer className="mt-20 border-t border-line bg-surface2">
-            <div className="container-x grid gap-10 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
+          <ToastProvider>
+            <SiteNav />
+            <main className="min-h-[70vh]">{children}</main>
+            <footer className="mt-20 border-t border-line bg-surface2">
+              <div className="container-x grid gap-10 py-12 md:grid-cols-[1.5fr_repeat(3,1fr)]">
               <div className="flex flex-col items-start gap-3">
                 <span className="text-ink">
                   <Logo size={20} />
@@ -107,8 +109,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                   </ul>
                 </div>
               ))}
-            </div>
-            <div className="border-t border-line">
+              </div>
+              <div className="border-t border-line">
               <div className="container-x flex flex-wrap items-center justify-between gap-3 py-5">
                 <p className="text-[11px] text-ink3">
                   © {new Date().getFullYear()} agni. All rights reserved.
@@ -117,8 +119,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
                   Built on Cloudflare Workers · D1 · KV · Analytics Engine
                 </p>
               </div>
-            </div>
-          </footer>
+              </div>
+            </footer>
+          </ToastProvider>
         </AuthProvider>
       </body>
     </html>

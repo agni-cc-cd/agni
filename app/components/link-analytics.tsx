@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import type { Link as LinkModel, Stats } from "@/lib/types";
 import { authHeaders, useAuth } from "./authed";
 import { BarList, StatTile, TimeChart } from "./charts";
 import { ArrowLeftIcon, ArrowUpRightIcon, CheckIcon, CopyIcon, TrashIcon } from "./icons";
 import { timeAgo } from "./dashboard";
+import { useToast } from "./toast";
 
 const RANGES = [7, 30, 90];
 
@@ -21,10 +22,13 @@ function fmtTs(ts: number): string {
 
 export function LinkAnalytics({ id }: { id: string }) {
   const { bearer } = useAuth();
+  const { push } = useToast();
   const router = useRouter();
+  const params = useSearchParams();
   const [link, setLink] = useState<LinkModel | null>(null);
   const [stats, setStats] = useState<Stats | null>(null);
-  const [days, setDays] = useState(30);
+  // Range lives in the URL so refresh/share/back keep the same view.
+  const days = RANGES.includes(Number(params?.get("days"))) ? Number(params?.get("days")) : 30;
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -40,11 +44,11 @@ export function LinkAnalytics({ id }: { id: string }) {
           headers: authHeaders(bearer),
         });
         const data = (await res.json()) as { link: LinkModel; stats: Stats; error?: string };
-        if (!res.ok) throw new Error(data.error ?? "Failed to load analytics.");
+        if (!res.ok) throw new Error(data.error ?? "We couldn't load analytics for this link.");
         setLink(data.link);
         setStats(data.stats);
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load analytics.");
+        setError(err instanceof Error ? err.message : "We couldn't load analytics for this link.");
       } finally {
         setLoading(false);
         setRefreshing(false);
@@ -57,14 +61,22 @@ export function LinkAnalytics({ id }: { id: string }) {
     if (bearer) load();
   }, [bearer, load]);
 
+  function setDays(next: number) {
+    const qs = new URLSearchParams(params?.toString());
+    qs.set("days", String(next));
+    router.replace(`?${qs.toString()}`, { scroll: false });
+  }
+
   async function remove() {
     if (!link) return;
     if (!confirm("Delete this short link? Its analytics history will be removed too.")) return;
     const res = await fetch(`/api/links/${id}`, { method: "DELETE", headers: authHeaders(bearer) });
-    if (res.ok) router.push("/dashboard");
-    else {
+    if (res.ok) {
+      push({ kind: "success", message: "Link deleted." });
+      router.push("/dashboard");
+    } else {
       const data = (await res.json()) as { error?: string };
-      alert(data.error ?? "Delete failed.");
+      push({ kind: "error", message: data.error ?? "We couldn't delete that link. Try again." });
     }
   }
 
@@ -75,7 +87,7 @@ export function LinkAnalytics({ id }: { id: string }) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
-      // clipboard unavailable
+      push({ kind: "error", message: "We couldn't copy to your clipboard. Copy the link manually." });
     }
   }
 
@@ -92,7 +104,7 @@ export function LinkAnalytics({ id }: { id: string }) {
   if (error || !link || !stats) {
     return (
       <div className="card flex flex-col items-center gap-3 px-6 py-12 text-center">
-        <p className="text-[13px] text-danger">{error ?? "Link not found."}</p>
+        <p className="text-[13px] text-danger">{error ?? "This link doesn't exist."}</p>
         <Link href="/dashboard" className="btn btn-ghost">
           <ArrowLeftIcon width={13} height={13} /> Back to links
         </Link>

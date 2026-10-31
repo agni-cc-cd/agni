@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Dashboard } from "../components/dashboard";
 import { RequireAuth } from "../components/require-auth";
 
@@ -15,7 +16,9 @@ export default function DashboardPage() {
         </div>
       </div>
       <RequireAuth>
-        <Dashboard />
+        <Suspense fallback={<div className="shimmer h-96 w-full" />}>
+          <Dashboard />
+        </Suspense>
       </RequireAuth>
     </div>
   );

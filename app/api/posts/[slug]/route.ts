@@ -7,18 +7,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
   await ensureSchema(DB);
   const { slug } = await params;
   const post = await getPostBySlug(DB, slug, isAdminAuthorized(request, ADMIN_TOKEN));
-  if (!post) return Response.json({ error: "Post not found." }, { status: 404 });
+  if (!post) return Response.json({ error: "This post doesn't exist." }, { status: 404 });
   return Response.json({ post });
 }
 
 export async function DELETE(request: Request, { params }: { params: Promise<{ slug: string }> }) {
   const { DB, ADMIN_TOKEN } = getEnv();
   if (!isAdminAuthorized(request, ADMIN_TOKEN)) {
-    return Response.json({ error: "Admin only." }, { status: 403 });
+    return Response.json({ error: "You need to be signed in as an admin to do this." }, { status: 403 });
   }
   const { slug } = await params;
   const post = await getPostBySlug(DB, slug, true);
-  if (!post) return Response.json({ error: "Post not found." }, { status: 404 });
+  if (!post) return Response.json({ error: "This post doesn't exist." }, { status: 404 });
   await deletePost(DB, post.id);
   return Response.json({ ok: true });
 }

@@ -30,13 +30,13 @@ export async function POST(request: Request) {
     title?: string;
   } | null;
   if (!body?.url) {
-    return Response.json({ error: "`url` is required." }, { status: 400 });
+    return Response.json({ error: "Please paste a URL to shorten." }, { status: 400 });
   }
 
   const target = normalizeTargetUrl(body.url);
   if (!target) {
     return Response.json(
-      { error: "Invalid target URL. Only http(s) URLs are allowed." },
+      { error: "That doesn't look like a valid link. Use a full web address starting with http:// or https://." },
       { status: 400 },
     );
   }
@@ -44,13 +44,16 @@ export async function POST(request: Request) {
   let slug = body.slug?.trim() || generateSlug();
   if (!isValidSlug(slug)) {
     return Response.json(
-      { error: "Invalid slug. Use 1-64 chars: letters, digits, `-` or `_`." },
+      { error: "Custom names can use letters, numbers, dashes and underscores — up to 64 characters." },
       { status: 400 },
     );
   }
 
   if (await getLinkBySlug(DB, slug)) {
-    return Response.json({ error: `Slug "${slug}" is already taken.` }, { status: 409 });
+    return Response.json(
+      { error: `The name "${slug}" is already taken. Try another one.` },
+      { status: 409 },
+    );
   }
 
   const id = crypto.randomUUID();

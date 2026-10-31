@@ -10,12 +10,7 @@ import {
   type ReactNode,
 } from "react";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import {
-  completeEmailSignInIfPending,
-  getFirebaseAuth,
-  getIdToken,
-  signInGuest,
-} from "@/lib/firebase-client";
+import { getFirebaseAuth, getIdToken, signInGuest } from "@/lib/firebase-client";
 
 interface AuthState {
   user: User | null;
@@ -75,7 +70,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     });
 
-    completeEmailSignInIfPending().catch(console.error);
     return unsub;
   }, []);
 

@@ -154,7 +154,7 @@ export default function Home() {
                 </li>
               ))}
             </ul>
-            <Link href="/login" className="btn btn-primary mt-7">
+            <Link href="/login?next=%2Fdashboard" className="btn btn-primary mt-7">
               Get your dashboard
               <ArrowUpRightIcon width={13} height={13} />
             </Link>

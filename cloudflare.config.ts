@@ -26,8 +26,7 @@ export default defineConfig({
       DB: bindings.d1({ name: "agni", id: "40f616d9-802f-404d-b320-ce6cadb71a50" }),
       LINKS_KV: bindings.kv({ id: "4b4838e7e85f48ab826c52c1ea8eb299" }),
       // Raw click stream for rich analytics (D1 rollups power the dashboard).
-      // Re-enable once Analytics Engine is toggled on for the account:
-      // CLICKS_ANALYTICS: bindings.analyticsEngineDataset({ name: "agni_clicks" }),
+      CLICKS_ANALYTICS: bindings.analyticsEngineDataset({ name: "agni_clicks" }),
       // Set with: cf secret put ADMIN_TOKEN (empty = open mode, for demos).
       ADMIN_TOKEN: bindings.secret(),
     },

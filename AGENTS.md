@@ -50,8 +50,9 @@ cloudflare.config.ts  # typed Cloudflare config: bindings, triggers, env
   prime/invalidate them.
 - **Only http(s) redirect targets** (`normalizeTargetUrl`). Slugs must pass
   `isValidSlug` and never shadow app routes (see `RESERVED_SLUGS`).
-- **Multi-tenant auth**: the product is public — anyone can sign in (Firebase: Google,
-  GitHub, Microsoft, X, Facebook, Yahoo, email link, guest) and owns the links they
+- **Multi-tenant auth**: the product is public — anyone can sign in (Firebase:
+  email/password, phone, anonymous guest, Google, Apple, GitHub, Facebook) and owns
+  the links they
   create (`links.created_by = uid`). APIs verify Firebase ID tokens server-side
   (Google JWKS via `jose`). The `ADMIN_TOKEN` secret is an ops principal ("open") for
   scripts/CI and the blog CMS. Ownership checks use `ownsLink()`.

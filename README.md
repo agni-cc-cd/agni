@@ -8,7 +8,7 @@ and deployed to **Cloudflare Workers**.
 - **D1** — source of truth: users, links, raw click events, daily rollups, posts
 - **Analytics Engine** — raw click stream for large-scale analysis
 - **Complete tracking** — IP, country, city, referrer, device, browser, OS, protocol, TLS, timestamps
-- **Multi-tenant auth** — Google, GitHub, Microsoft, X, Facebook, Yahoo, passwordless email, guest mode (Firebase)
+- **Multi-tenant auth** — email/password, phone, anonymous guest, Google, Apple, GitHub, Facebook (Firebase)
 - **Typed config** — `cloudflare.config.ts` via the [`cf` CLI](https://developers.cloudflare.com/cf/) (not wrangler)
 
 ## Quick start
@@ -27,7 +27,7 @@ npm run deploy       # deploy to Cloudflare Workers (use: npx cf deploy --secret
 | Route | What it is |
 | --- | --- |
 | `/` | Landing page with the shorten box |
-| `/login` | Multi-provider sign-in (social, email link, guest) |
+| `/login` | Multi-provider sign-in (email/password, phone, social, guest) |
 | `/dashboard` | Auth-guarded links dashboard with overview analytics |
 | `/dashboard/links/:id` | Per-link analytics: totals, trends, breakdowns, raw activity |
 | `/dashboard/blog` | Admin CMS for blog posts (markdown) |
