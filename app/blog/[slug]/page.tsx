@@ -1,22 +1,47 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
 import { getPostBySlug } from "@/lib/db";
 import { getEnv } from "@/lib/env";
 import { renderMarkdown } from "@/lib/markdown";
+import { blogPostingJsonLd } from "@/lib/seo";
 import { ArrowLeftIcon } from "@/app/components/icons";
+import { CommentsSection } from "@/app/components/comments";
 
 export const dynamic = "force-dynamic";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }) {
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   let title = "Blog — agni";
+  let description = "Notes on links, analytics, and building fast things on Cloudflare.";
   try {
     const post = await getPostBySlug(getEnv().DB, slug);
-    if (post) title = `${post.title} — agni`;
+    if (post) {
+      title = `${post.title} — agni`;
+      description = post.excerpt ?? description;
+    }
   } catch {
-    // fall through to default title
+    // fall through to defaults
   }
-  return { title };
+  return {
+    title,
+    description,
+    alternates: { canonical: `/blog/${slug}` },
+    openGraph: {
+      title,
+      description,
+      url: `https://agni.cc.cd/blog/${slug}`,
+      siteName: "agni",
+      type: "article",
+      images: [{ url: "/og-image.png", width: 1200, height: 630 }],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: ["/og-image.png"],
+    },
+  };
 }
 
 export default async function BlogPostPage({ params }: { params: Promise<{ slug: string }> }) {
@@ -30,9 +55,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
   if (!post) notFound();
 
   const html = renderMarkdown(post.body_md);
+  const jsonLd = blogPostingJsonLd(post);
 
   return (
     <div className="container-x py-14">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <article className="mx-auto max-w-2xl">
         <Link href="/blog" className="flex w-fit items-center gap-1.5 text-[11.5px] text-ink3 hover:text-ink2">
           <ArrowLeftIcon width={12} height={12} /> All posts
@@ -55,6 +85,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
         <hr className="divider my-8" />
         <div className="prose" dangerouslySetInnerHTML={{ __html: html }} />
       </article>
+      <CommentsSection slug={post.slug} />
     </div>
   );
 }

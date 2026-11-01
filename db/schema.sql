@@ -66,9 +66,20 @@ CREATE TABLE IF NOT EXISTS posts (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+CREATE TABLE IF NOT EXISTS comments (
+  id TEXT PRIMARY KEY,
+  post_slug TEXT NOT NULL,
+  name TEXT NOT NULL,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  status TEXT NOT NULL DEFAULT 'visible',
+  ip_hash TEXT
+);
+
 CREATE INDEX IF NOT EXISTS idx_links_created_at ON links (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_links_owner ON links (created_by, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_clicks_daily_slug ON clicks_daily (slug, day);
 CREATE INDEX IF NOT EXISTS idx_click_events_link_ts ON click_events (link_id, ts DESC);
 CREATE INDEX IF NOT EXISTS idx_click_events_ts ON click_events (ts DESC);
 CREATE INDEX IF NOT EXISTS idx_posts_published ON posts (published, published_at DESC);
+CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_slug, created_at DESC);
