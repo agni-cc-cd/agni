@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="robots" content="noindex" />
+    <title>Continuing to agni…</title>
+    <script>
+      // Email sign-in / password-reset links land here because Firebase Auth
+      // only allowlists action continue URLs on authorized domains, and this
+      // project's hosting domain (agni-dd35c.web.app) is authorized while
+      // agni.cc.cd is pending that console toggle. Forward every query
+      // parameter (oobCode, mode, apiKey, lang, name, ...) to the requested
+      // destination on agni.cc.cd.
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var dest = params.get("dest") || "/auth/verify";
+        params.delete("dest");
+        // Open-redirect guard: relative paths on our app only.
+        if (dest.charAt(0) !== "/" || dest.charAt(1) === "/") dest = "/auth/verify";
+        var qs = params.toString();
+        var target = "https://agni.cc.cd" + dest + (qs ? "?" + qs : "");
+        document.location.replace(target);
+      })();
+    </script>
+  </head>
+  <body>
+    <p style="font-family: monospace; color: #666; padding: 2rem">
+      Continuing to <a href="https://agni.cc.cd">agni.cc.cd</a>…
+    </p>
+  </body>
+</html>
