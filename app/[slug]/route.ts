@@ -2,6 +2,7 @@ import { waitUntil } from "cloudflare:workers";
 import { requestClickEvent, trackClick } from "@/lib/analytics";
 import { recordClick } from "@/lib/db";
 import { getEnv } from "@/lib/env";
+import { runMilestoneCheck } from "@/lib/milestone-mail";
 import { resolveRedirect } from "@/lib/redirect";
 
 /**
@@ -25,6 +26,7 @@ export async function GET(request: Request, { params }: { params: Promise<{ slug
     (async () => {
       await recordClick(DB, event);
       trackClick(CLICKS_ANALYTICS, event);
+      await runMilestoneCheck(getEnv(), hit.id);
     })(),
   );
 

@@ -43,24 +43,64 @@ export function Dashboard() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/links?days=${days}`, { headers: authHeaders(bearer) });
-      const data = (await res.json()) as { links: LinkModel[]; overview: Overview; error?: string };
-      if (!res.ok) throw new Error(data.error ?? "We couldn't load your links. Refresh to try again.");
-      setLinks(data.links);
-      setOverview(data.overview);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "We couldn't load your links. Refresh to try again.");
-    } finally {
-      setLoading(false);
-    }
-  }, [bearer, days]);
+  const load = useCallback(
+    async (opts: { silent?: boolean } = {}) => {
+      if (!opts.silent) setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(`/api/links?days=${days}`, { headers: authHeaders(bearer) });
+        const data = (await res.json()) as { links: LinkModel[]; overview: Overview; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "We couldn't load your links. Refresh to try again.");
+        setLinks(data.links);
+        setOverview(data.overview);
+      } catch (err) {
+        // Silent refresh failures keep the last good numbers on screen.
+        if (!opts.silent) {
+          setError(err instanceof Error ? err.message : "We couldn't load your links. Refresh to try again.");
+        }
+      } finally {
+        if (!opts.silent) setLoading(false);
+      }
+    },
+    [bearer, days],
+  );
 
   useEffect(() => {
     if (bearer) load();
+  }, [bearer, load]);
+
+  // Live counts without a manual refresh: poll quietly while the tab is
+  // visible, back off to a slower tick when it is hidden.
+  useEffect(() => {
+    if (!bearer) return;
+    let stopped = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+
+    const tick = async () => {
+      if (stopped) return;
+      if (typeof document === "undefined" || document.visibilityState === "visible") {
+        await load({ silent: true });
+      }
+      if (stopped) return;
+      timer = setTimeout(tick, 10_000);
+    };
+    timer = setTimeout(tick, 10_000);
+
+    const onVisible = () => {
+      if (document.visibilityState === "visible") {
+        if (timer) clearTimeout(timer);
+        load({ silent: true }).then(() => {
+          if (!stopped) timer = setTimeout(tick, 10_000);
+        });
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [bearer, load]);
 
   async function remove(id: string) {
@@ -121,7 +161,8 @@ export function Dashboard() {
             <LinkForm
               size="sm"
               onCreated={() => {
-                load();
+                // Quiet refresh so the table updates without a shimmer flash.
+                load({ silent: true });
               }}
             />
           </div>
@@ -146,7 +187,7 @@ export function Dashboard() {
                 </button>
               ))}
             </div>
-            <button type="button" className="btn btn-ghost h-8" onClick={load} disabled={loading}>
+            <button type="button" className="btn btn-ghost h-8" onClick={() => load()} disabled={loading}>
               <RefreshIcon width={13} height={13} />
               Refresh
             </button>

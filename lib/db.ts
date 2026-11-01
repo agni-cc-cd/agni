@@ -9,6 +9,7 @@ import type {
   UserProfile,
 } from "./types";
 import type { ClickEvent } from "./analytics";
+import { crossedMilestones } from "./milestones";
 
 const LINK_COLUMNS = "id, slug, target_url, title, created_at, created_by, clicks, last_clicked_at";
 
@@ -382,6 +383,81 @@ export async function deletePost(db: D1Database, id: string): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
+// Milestone emails
+// ---------------------------------------------------------------------------
+
+/**
+ * Claim every reached-but-unsent milestone for an account in one shot.
+ * INSERT OR IGNORE makes the claim exactly-once even under concurrent clicks.
+ */
+export async function claimMilestones(db: D1Database, userId: string, total: number): Promise<number[]> {
+  const due = crossedMilestones(total);
+  if (due.length === 0) return [];
+  const { results: sentRows } = await db
+    .prepare(`SELECT milestone FROM email_milestones WHERE user_id = ?`)
+    .bind(userId)
+    .all<{ milestone: number }>();
+  const sent = new Set(sentRows.map((r) => Number(r.milestone)));
+  const fresh = due.filter((m) => !sent.has(m));
+  if (fresh.length === 0) return [];
+  const inserted = await db.batch(
+    fresh.map((m) =>
+      db.prepare(`INSERT OR IGNORE INTO email_milestones (user_id, milestone) VALUES (?, ?)`).bind(userId, m),
+    ),
+  );
+  // Only the rows we actually inserted are ours to send; a concurrent click
+  // that reached the same milestone won the INSERT and owns the email.
+  return fresh.filter((_, i) => Number(inserted[i]?.meta?.changes ?? 0) > 0);
+}
+
+/** Release a claimed milestone so a later click can retry a failed send. */
+export async function releaseMilestones(db: D1Database, userId: string, milestones: number[]): Promise<void> {
+  if (milestones.length === 0) return;
+  await db.batch(
+    milestones.map((m) =>
+      db.prepare(`DELETE FROM email_milestones WHERE user_id = ? AND milestone = ?`).bind(userId, m),
+    ),
+  );
+}
+
+/** Aggregate snapshot for the milestone email. */
+export async function getMilestoneSnapshot(
+  db: D1Database,
+  owner: string,
+): Promise<{
+  totalClicks: number;
+  totalLinks: number;
+  topLinks: Array<{ slug: string; clicks: number }>;
+  topCountries: Array<{ label: string; count: number }>;
+}> {
+  const [totals, links, countries] = await Promise.all([
+    db
+      .prepare(`SELECT COALESCE(SUM(clicks), 0) AS clicks, COUNT(*) AS links FROM links WHERE created_by = ?`)
+      .bind(owner)
+      .first<{ clicks: number; links: number }>(),
+    db
+      .prepare(`SELECT slug, clicks FROM links WHERE created_by = ? ORDER BY clicks DESC LIMIT 5`)
+      .bind(owner)
+      .all<{ slug: string; clicks: number }>(),
+    db
+      .prepare(
+        `SELECT COALESCE(NULLIF(e.country, ''), '(none)') AS label, COUNT(*) AS count
+         FROM click_events e JOIN links l ON l.id = e.link_id
+         WHERE l.created_by = ?
+         GROUP BY label ORDER BY count DESC LIMIT 5`,
+      )
+      .bind(owner)
+      .all<{ label: string; count: number }>(),
+  ]);
+  return {
+    totalClicks: Number(totals?.clicks ?? 0),
+    totalLinks: Number(totals?.links ?? 0),
+    topLinks: links.results.map((r) => ({ slug: r.slug, clicks: Number(r.clicks) })),
+    topCountries: countries.results.map((r) => ({ label: r.label, count: Number(r.count) })),
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Schema
 // ---------------------------------------------------------------------------
 
@@ -445,6 +521,12 @@ export async function ensureSchema(db: D1Database): Promise<void> {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       status TEXT NOT NULL DEFAULT 'visible',
       ip_hash TEXT
+    )`),
+    db.prepare(`CREATE TABLE IF NOT EXISTS email_milestones (
+      user_id TEXT NOT NULL,
+      milestone INTEGER NOT NULL,
+      sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (user_id, milestone)
     )`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_links_created_at ON links (created_at DESC)`),
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_links_owner ON links (created_by, created_at DESC)`),

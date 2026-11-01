@@ -7,6 +7,8 @@ export interface AgniEnv {
   /** Undefined until Analytics Engine is enabled for the account. */
   CLICKS_ANALYTICS?: AnalyticsEngineDataset;
   ADMIN_TOKEN?: string;
+  /** Email transport for milestone mails; absent = never send. */
+  SEND_EMAIL?: SendEmail;
 }
 
 export function getEnv(): AgniEnv {

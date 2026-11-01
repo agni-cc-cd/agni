@@ -29,6 +29,12 @@ export default defineConfig({
       CLICKS_ANALYTICS: bindings.analyticsEngineDataset({ name: "agni_clicks" }),
       // Set with: cf secret put ADMIN_TOKEN (empty = open mode, for demos).
       ADMIN_TOKEN: bindings.secret(),
+      // Milestone analytics emails (lib/email.ts). Not attached yet: on the
+      // Workers Free plan the send_email binding can only deliver to
+      // individually verified destination addresses, so the engine no-ops
+      // until a transport is chosen (Workers Paid, verified destinations, or
+      // an external ESP). Flip on by adding:
+      //   SEND_EMAIL: bindings.sendEmail({ allowedSenderAddresses: ["notifications@agni.cc.cd"] }),
     },
   }),
 });

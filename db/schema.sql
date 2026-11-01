@@ -76,6 +76,13 @@ CREATE TABLE IF NOT EXISTS comments (
   ip_hash TEXT
 );
 
+CREATE TABLE IF NOT EXISTS email_milestones (
+  user_id TEXT NOT NULL,
+  milestone INTEGER NOT NULL,
+  sent_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, milestone)
+);
+
 CREATE INDEX IF NOT EXISTS idx_links_created_at ON links (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_links_owner ON links (created_by, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_clicks_daily_slug ON clicks_daily (slug, day);
