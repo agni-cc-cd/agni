@@ -8,7 +8,7 @@ and deployed to **Cloudflare Workers**.
 - **D1** — source of truth: users, links, raw click events, daily rollups, posts
 - **Analytics Engine** — raw click stream for large-scale analysis
 - **Complete tracking** — IP, country, city, referrer, device, browser, OS, protocol, TLS, timestamps
-- **Multi-tenant auth** — email/password, phone, anonymous guest, Google, Apple, GitHub, Facebook (Firebase)
+- **Multi-tenant auth** — verification-first email links, email/password, phone, anonymous guest, Google, GitHub (Firebase)
 - **Typed config** — `cloudflare.config.ts` via the [`cf` CLI](https://developers.cloudflare.com/cf/) (not wrangler)
 
 ## Quick start
@@ -27,12 +27,19 @@ npm run deploy       # deploy to Cloudflare Workers (use: npx cf deploy --secret
 | Route | What it is |
 | --- | --- |
 | `/` | Landing page with the shorten box |
-| `/login` | Multi-provider sign-in (email/password, phone, social, guest) |
+| `/login` | Sign-in (email link or password, phone, Google, GitHub, guest) |
+| `/auth/verify` | Email link verification landing |
+| `/auth/set-password` | Post-verification password setup |
+| `/auth/reset` | Forgot-password: request link + set new password |
 | `/dashboard` | Auth-guarded links dashboard with overview analytics |
 | `/dashboard/links/:id` | Per-link analytics: totals, trends, breakdowns, raw activity |
 | `/dashboard/blog` | Admin CMS for blog posts (markdown) |
-| `/blog`, `/blog/:slug` | Public blog |
+| `/blog`, `/blog/:slug` | Public blog with comments |
+| `/compare/:slug` | Head-to-head comparison pages (bitly, tinyurl, rebrandly, short.io, dub, cuttly) |
+| `/alternatives` | Alternatives hub |
 | `/pricing`, `/about`, `/terms`, `/privacy` | Supporting pages |
+| `/robots.txt`, `/sitemap.xml`, `/rss.xml` | Crawl and feed surfaces |
+| `/llms.txt`, `/llms-full.txt` | LLM discovery manifests |
 
 ## API
 
@@ -46,6 +53,8 @@ npm run deploy       # deploy to Cloudflare Workers (use: npx cf deploy --secret
 | `GET` | `/api/links/:id/stats?days=30` | full analytics for a link |
 | `GET` | `/api/me` | current user profile (syncs the users table) |
 | `GET` | `/api/posts` | published blog posts |
+| `GET` | `/api/posts/:slug/comments` | visible comments on a post |
+| `POST` | `/api/posts/:slug/comments` | add a comment (honeypot + rate limited) |
 | `POST` | `/api/posts` | create/update post (admin) |
 | `DELETE` | `/api/posts/:slug` | delete post (admin) |
 | `GET` | `/api/health` | health probe |
